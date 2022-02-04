@@ -65,18 +65,6 @@ const socket = (http: any) => {
         log('Client ID ' + socket.id + ' disconnected.');
       });
     });
-
-    socket.on('ipaddr', () => {
-      const ifaces: NodeJS.Dict<NetworkInterfaceInfo[]> = networkInterfaces();
-      for (let dev in ifaces) {
-        (ifaces[dev] || []).forEach((details) => {
-          if (details.family === 'IPv4' && details.address !== '127.0.0.1') {
-            socket.emit('ipaddr', details.address);
-          }
-        });
-      }
-    });
-
   });
 }
 
