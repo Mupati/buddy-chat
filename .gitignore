@@ -7,4 +7,7 @@ node_modules
 out
 gen
 
+#VS
+.vscode
+
 dist

@@ -1,0 +1,18 @@
+{
+    "env": {
+      "es6": true,
+      "node": true,
+      "es2021": true
+    },
+    "parser": "@typescript-eslint/parser",
+    "extends": [
+      "airbnb-base",
+      "plugin:@typescript-eslint/recommended",
+      "plugin:json/recommended"
+    ],
+    "plugins": ["@typescript-eslint"],
+    "rules": {
+      "@typescript-eslint/ban-ts-comment": ["off"],
+      "no-console": ["off"]
+    }
+  }

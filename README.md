@@ -32,9 +32,17 @@ Build the backend:
 
 ```npm run build```
 
+Autofix code style:
+
+```npm run lint:fix```
+
 For just running:
 
 ```npm run dev```
+
+For running with debug mode:
+
+```DEBUG=* npm run dev```
 
 ### Credit where credit is due:
 
