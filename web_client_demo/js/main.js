@@ -35,6 +35,14 @@ Vue.createApp({
       () => `${window.location.origin}/?room=${formData.room}`
     );
 
+    Vue.onMounted(() => {
+      const params = new URL(document.location).searchParams;
+      const room = params.get("room");
+      if (room) {
+        formData.room = room;
+      }
+    });
+
     const constraints = {
       audio: true,
       video: true,

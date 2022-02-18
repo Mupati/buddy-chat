@@ -93,7 +93,7 @@
           <p v-if="isEmptyRoom">
             Hello! {{formData.name}} you are the only person here.<br />
             Invite your buddy with this link:
-            <a :href="buddyLink" class="underline text-rose">{{buddyLink}}</a>
+            <a :href="buddyLink" class="underline">{{buddyLink}}</a>
           </p>
           <div v-else>
             <template v-for="user in connectedUsers">
