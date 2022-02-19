@@ -6,9 +6,7 @@ const EVENTS = {
   CREATED: "created",
   JOIN: "join",
   JOINED: "joined",
-  READY: "ready",
   FULL: "full",
-  DISCONNECT: "disconnect",
   LOG: "log",
   USER_JOINED: "user_joined",
   USER_LEFT: "user_left",
@@ -16,14 +14,11 @@ const EVENTS = {
 };
 
 const MESSAGE_TYPE = {
-  OFFER: "offer",
-  ANSWER: "answer",
   CANDIDATE: "candidate",
-  BYE: "bye",
   CALL_USER: "call_user",
   ANSWER_USER: "answer_user",
   DECLINE_CALL: "decline_call",
-  HAND_UP: "hang_up",
+  HANG_UP: "hang_up",
 };
 
 Vue.createApp({
@@ -36,15 +31,13 @@ Vue.createApp({
     const isIncomingCall = Vue.ref(false);
     const incomingCallInfo = Vue.ref(null);
     const callConnected = Vue.ref(false);
-    const localVideo = Vue.ref(null);
-    const remoteVideo = Vue.ref(null);
+    const localVideoRef = Vue.ref(null);
+    const remoteVideoRef = Vue.ref(null);
     const localMedia = Vue.reactive({
-      isMutedCam: false,
       isMutedMic: false,
     });
 
     const remoteMedia = Vue.reactive({
-      isMutedCam: false,
       isMutedMic: false,
     });
 
@@ -180,7 +173,7 @@ Vue.createApp({
     function handleRemoteStreamAdded(event) {
       console.log("Remote stream added.");
       remoteStream = event.stream;
-      remoteVideo.value.srcObject = remoteStream;
+      remoteVideoRef.value.srcObject = remoteStream;
     }
 
     function handleRemoteStreamRemoved(event) {
@@ -276,7 +269,13 @@ Vue.createApp({
             isCalling.value = false;
           }
         } else if (message.type === MESSAGE_TYPE.DECLINE_CALL) {
-          console.log(message);
+          if (message.receiver.id === myInfo.value.id) {
+            callingNotification.value = "The call was rejected";
+            setTimeout(() => {
+              isCalling.value = false;
+              hangUp();
+            }, 5000);
+          }
         } else if (message.type === MESSAGE_TYPE.CALL_USER) {
           // you got an incoming call if you are the receiver
           if (message.receiver.id === myInfo.value.id) {
@@ -284,8 +283,8 @@ Vue.createApp({
             incomingCallInfo.value = message.caller;
             callData = message;
           }
-        } else if (message.type === MESSAGE_TYPE.HAND_UP) {
-          console.log(message);
+        } else if (message.type === MESSAGE_TYPE.HANG_UP) {
+          hangUp();
         }
       });
     };
@@ -312,13 +311,20 @@ Vue.createApp({
       socket.emit(EVENTS.MESSAGE, message);
     };
 
-    const toggleCamera = () => {};
-    const toggleMicrophone = () => {};
+    const toggleMicrophone = () => {
+      if (localMedia.isMutedMic) {
+        localVideoRef.value.srcObject.getAudioTracks()[0].enabled = true;
+        localMedia.isMutedMic = false;
+      } else {
+        localVideoRef.value.srcObject.getAudioTracks()[0].enabled = false;
+        localMedia.isMutedMic = true;
+      }
+    };
 
     const placeCall = async (receiverInfo) => {
       try {
         const stream = await getMediaPermission();
-        localVideo.value.srcObject = stream;
+        localVideoRef.value.srcObject = stream;
         createPeerConnection();
         pc.addStream(stream);
         const offer = await pc.createOffer([sdpConstraints]);
@@ -330,7 +336,7 @@ Vue.createApp({
           sdpData: offer,
         });
         isCalling.value = true;
-        callingNotification.value = `Waiting for ${receiverInfo.name} to answer`;
+        callingNotification.value = `Calling ${receiverInfo.name}...`;
       } catch (error) {
         console.log(error);
       }
@@ -339,7 +345,7 @@ Vue.createApp({
     const answerCall = async () => {
       try {
         const stream = await getMediaPermission();
-        localVideo.value.srcObject = stream;
+        localVideoRef.value.srcObject = stream;
         if (!pc) createPeerConnection();
         pc.addStream(stream);
         pc.setRemoteDescription(new RTCSessionDescription(callData.sdpData));
@@ -355,9 +361,42 @@ Vue.createApp({
         console.log(error);
       }
     };
-    const declineCall = () => {};
 
-    const hangUp = () => {};
+    const stopVideoStream = (videoElem) => {
+      const stream = videoElem.srcObject;
+      const tracks = stream.getTracks();
+      console.log("stopping tracks: ", tracks);
+      tracks.forEach((track) => {
+        track.stop();
+      });
+      videoElem.srcObject = null;
+    };
+
+    const hangUp = () => {
+      if (localVideoRef.value.srcObject) stopVideoStream(localVideoRef.value);
+      if (remoteVideoRef.value.srcObject) stopVideoStream(remoteVideoRef.value);
+      if (pc) {
+        pc.close();
+        pc = null;
+      }
+      // if there is an existing or outgoing call session, send a hang up message
+      if (callConnected.value || isCalling.value) {
+        sendMessage({
+          type: MESSAGE_TYPE.HANG_UP,
+        });
+      }
+      callConnected.value = false;
+      isIncomingCall.value = false;
+      isCalling.value = false;
+    };
+
+    const declineCall = () => {
+      sendMessage({
+        type: MESSAGE_TYPE.DECLINE_CALL,
+        receiver: callData.caller,
+      });
+      hangUp();
+    };
 
     return {
       joinRoom,
@@ -365,12 +404,11 @@ Vue.createApp({
       buddyLink,
       isLoading,
       isRoomFull,
-      localVideo,
+      localVideoRef,
       isEmptyRoom,
-      remoteVideo,
+      remoteVideoRef,
       isJoinedRoom,
       connectedUsers,
-      toggleCamera,
       toggleMicrophone,
       isIncomingCall,
       incomingCallInfo,

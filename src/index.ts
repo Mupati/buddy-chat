@@ -118,6 +118,9 @@ const socketSignalingServer = (
         roomsData[room] = roomsData[room].filter(
           (userInfo) => userInfo.id !== socket.id
         );
+
+        // send updated list of available users.
+        io.to(room).emit(EVENTS.ALL_USERS_IN_ROOM, roomsData[room]);
       });
     });
   });

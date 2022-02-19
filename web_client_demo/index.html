@@ -114,13 +114,13 @@
         <div class="my-5" v-if="isIncomingCall && !callConnected">
           <p class="mb-3">Incoming Call from {{ incomingCallInfo.name}}</p>
           <button
-            class="py-2 px-4 mr-5 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700"
+            class="py-2 px-4 mr-5 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-emerald-500"
             @click="answerCall"
           >
             Answer
           </button>
           <button
-            class="py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700"
+            class="py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#FF0000]"
             @click="declineCall"
           >
             Decline
@@ -132,26 +132,20 @@
         class="mt-5"
         v-show="isCalling || callConnected"
       >
-        <video ref="localVideo" id="local-video" autoplay muted></video>
-        <video ref="remoteVideo" id="remote-video" autoplay></video>
+        <video ref="localVideoRef" id="local-video" autoplay muted></video>
+        <video ref="remoteVideoRef" id="remote-video" autoplay></video>
         <p v-if="isCalling" class="absolute top-10 left-10">
           {{callingNotification}}
         </p>
         <div class="absolute bottom-5 left-5 z-10">
           <button
-            class="py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700"
-            @click="toggleCamera"
-          >
-            {{localMedia.isMutedCam ? 'Unmute': 'Mute'}} Camera
-          </button>
-          <button
             class="mx-5 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700"
             @click="toggleMicrophone"
           >
-            {{localMedia.isMutedMic ? 'Unmute': 'Mute'}}Microphone
+            {{localMedia.isMutedMic ? 'Unmute': 'Mute'}} Microphone
           </button>
           <button
-            class="py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700"
+            class="py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#FF0000]"
             @click="hangUp"
           >
             Hang up
