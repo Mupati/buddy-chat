@@ -37,10 +37,6 @@ Vue.createApp({
       isMutedMic: false,
     });
 
-    const remoteMedia = Vue.reactive({
-      isMutedMic: false,
-    });
-
     const myInfo = Vue.ref(null);
     const connectedUsers = Vue.ref([]);
     const formData = Vue.reactive({
@@ -328,6 +324,8 @@ Vue.createApp({
         createPeerConnection();
         pc.addStream(stream);
         const offer = await pc.createOffer([sdpConstraints]);
+        // Set Opus as the preferred codec in SDP if Opus is present.
+        offer.sdp = preferOpus(offer.sdp);
         pc.setLocalDescription(offer);
         sendMessage({
           type: MESSAGE_TYPE.CALL_USER,
@@ -350,6 +348,8 @@ Vue.createApp({
         pc.addStream(stream);
         pc.setRemoteDescription(new RTCSessionDescription(callData.sdpData));
         const answer = await pc.createAnswer();
+        // Set Opus as the preferred codec in SDP if Opus is present.
+        answer.sdp = preferOpus(answer.sdp);
         pc.setLocalDescription(answer);
         sendMessage({
           type: MESSAGE_TYPE.ANSWER_USER,
@@ -365,7 +365,6 @@ Vue.createApp({
     const stopVideoStream = (videoElem) => {
       const stream = videoElem.srcObject;
       const tracks = stream.getTracks();
-      console.log("stopping tracks: ", tracks);
       tracks.forEach((track) => {
         track.stop();
       });
@@ -399,28 +398,27 @@ Vue.createApp({
     };
 
     return {
+      hangUp,
       joinRoom,
       formData,
+      placeCall,
       buddyLink,
+      isCalling,
       isLoading,
+      answerCall,
+      localMedia,
       isRoomFull,
-      localVideoRef,
+      declineCall,
       isEmptyRoom,
-      remoteVideoRef,
       isJoinedRoom,
+      localVideoRef,
+      remoteVideoRef,
       connectedUsers,
       toggleMicrophone,
       isIncomingCall,
       incomingCallInfo,
-      placeCall,
-      answerCall,
-      declineCall,
-      hangUp,
-      isCalling,
-      callingNotification,
-      localMedia,
-      remoteMedia,
       callConnected,
+      callingNotification,
     };
   },
 }).mount("#app");
