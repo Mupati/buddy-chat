@@ -87,59 +87,75 @@
                 {{ isLoading ? "Joining..." : "Join" }}
               </button>
             </div>
+            <p v-if="isRoomFull">
+              Sorry {{formData.name}}, the room is full. You may create a new
+              one.
+            </p>
           </form>
         </div>
-        <div class="my-5">
+        <div class="my-5 mx-auto">
           <p v-if="isEmptyRoom">
             Hello! {{formData.name}} you are the only person here.<br />
             Invite your buddy with this link:
             <a :href="buddyLink" class="underline">{{buddyLink}}</a>
           </p>
-          <div v-else>
+          <div v-if="!isEmptyRoom && !callConnected">
             <template v-for="user in connectedUsers">
               <button
                 class="py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700"
-                v-if="user.name !== formData.name"
+                v-if="user.name !== formData.name && !isCalling && !isIncomingCall"
+                @click="placeCall(user)"
               >
                 Call {{user.name}}
               </button>
             </template>
           </div>
         </div>
-        <div class="my-5" v-if="isIncomingCall">
-          <p class="mb-3">Incoming Call from "Name of Person"</p>
+        <div class="my-5" v-if="isIncomingCall && !callConnected">
+          <p class="mb-3">Incoming Call from {{ incomingCallInfo.name}}</p>
           <button
             class="py-2 px-4 mr-5 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700"
+            @click="answerCall"
           >
             Answer
           </button>
           <button
             class="py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700"
+            @click="declineCall"
           >
             Decline
           </button>
         </div>
-
-        <div id="video-container" class="mt-5" v-if="callConnected">
-          <video ref="localVideo" id="local-video" autoplay muted></video>
-          <video ref="remoteVideo" id="remote-video" autoplay></video>
-          <div class="absolute bottom-5 right-5">
-            <button
-              class="py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700"
-            >
-              Mute Camera
-            </button>
-            <button
-              class="mx-5 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700"
-            >
-              Mute Microphone
-            </button>
-            <button
-              class="py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700"
-            >
-              Hang up
-            </button>
-          </div>
+      </div>
+      <div
+        id="video-container"
+        class="mt-5"
+        v-show="isCalling || callConnected"
+      >
+        <video ref="localVideo" id="local-video" autoplay muted></video>
+        <video ref="remoteVideo" id="remote-video" autoplay></video>
+        <p v-if="isCalling" class="absolute top-10 left-10">
+          {{callingNotification}}
+        </p>
+        <div class="absolute bottom-5 left-5 z-10">
+          <button
+            class="py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700"
+            @click="toggleCamera"
+          >
+            {{localMedia.isMutedCam ? 'Unmute': 'Mute'}} Camera
+          </button>
+          <button
+            class="mx-5 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700"
+            @click="toggleMicrophone"
+          >
+            {{localMedia.isMutedMic ? 'Unmute': 'Mute'}}Microphone
+          </button>
+          <button
+            class="py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700"
+            @click="hangUp"
+          >
+            Hang up
+          </button>
         </div>
       </div>
     </main>

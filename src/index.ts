@@ -86,17 +86,18 @@ const socketSignalingServer = (
       if (!roomsData[room]) {
         roomsData[room] = [];
       }
-      roomsData[room].push({ name: socket.user, id: socket.id });
 
       if (numClients === 0) {
         socket.join(room);
         log(`Client ID ${socket.id} created room ${room}`);
-        socket.emit(EVENTS.CREATED, room, socket.id);
+        socket.emit(EVENTS.CREATED, room, { name: socket.user, id: socket.id });
+        roomsData[room].push({ name: socket.user, id: socket.id });
       } else if (numClients === 1) {
         log(`Client ID ${socket.id} joined room ${room}`);
         io.sockets.in(room).emit(EVENTS.JOIN, room);
         socket.join(room);
-        socket.emit(EVENTS.JOINED, room, socket.id);
+        socket.emit(EVENTS.JOINED, room, { name: socket.user, id: socket.id });
+        roomsData[room].push({ name: socket.user, id: socket.id });
 
         socket.broadcast.emit(
           EVENTS.USER_JOINED,
@@ -105,7 +106,7 @@ const socketSignalingServer = (
 
         // Broadcast room-specific info to all users in the room
         io.to(room).emit(EVENTS.ALL_USERS_IN_ROOM, roomsData[room]);
-        // io.sockets.in(room).emit(EVENTS.READY);
+        io.sockets.in(room).emit(EVENTS.READY);
       } else {
         // max two clients
         socket.emit(EVENTS.FULL, room);
