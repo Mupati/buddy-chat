@@ -15,12 +15,40 @@ const EVENTS = {
   ALL_USERS_IN_ROOM: "all_users_in_room",
 };
 
+const MESSAGE_TYPE = {
+  OFFER: "offer",
+  ANSWER: "answer",
+  CANDIDATE: "candidate",
+  BYE: "bye",
+  CALL_USER: "call_user",
+  ANSWER_USER: "answer_user",
+  DECLINE_CALL: "decline_call",
+  HAND_UP: "hang_up",
+};
+
 Vue.createApp({
   setup() {
     const isJoinedRoom = Vue.ref(false);
+    const isRoomFull = Vue.ref(false);
     const isLoading = Vue.ref(false);
+    const isCalling = Vue.ref(false);
+    const callingNotification = Vue.ref("");
+    const isIncomingCall = Vue.ref(false);
+    const incomingCallInfo = Vue.ref(null);
+    const callConnected = Vue.ref(false);
     const localVideo = Vue.ref(null);
     const remoteVideo = Vue.ref(null);
+    const localMedia = Vue.reactive({
+      isMutedCam: false,
+      isMutedMic: false,
+    });
+
+    const remoteMedia = Vue.reactive({
+      isMutedCam: false,
+      isMutedMic: false,
+    });
+
+    const myInfo = Vue.ref(null);
     const connectedUsers = Vue.ref([]);
     const formData = Vue.reactive({
       name: "",
@@ -66,12 +94,9 @@ Vue.createApp({
     };
 
     let socket;
-    let localStream;
     let remoteStream;
-    let isInitiator = false;
-    let isChannelReady = false;
-    let isStarted = false;
     let pc;
+    let callData;
 
     // Set Opus as the default audio codec if it's present.
     function preferOpus(sdp) {
@@ -166,7 +191,7 @@ Vue.createApp({
       console.log("icecandidate event: ", event);
       if (event.candidate) {
         sendMessage({
-          type: "candidate",
+          type: MESSAGE_TYPE.CANDIDATE,
           label: event.candidate.sdpMLineIndex,
           id: event.candidate.sdpMid,
           candidate: event.candidate.candidate,
@@ -188,82 +213,33 @@ Vue.createApp({
         alert("Cannot create RTCPeerConnection object.");
       }
     }
-
-    function setLocalAndSendMessage(sessionDescription) {
-      // Set Opus as the preferred codec in SDP if Opus is present.
-      //  sessionDescription.sdp = preferOpus(sessionDescription.sdp);
-      pc.setLocalDescription(sessionDescription);
-      console.log("setLocalAndSendMessage sending message", sessionDescription);
-      sendMessage(sessionDescription);
-    }
-
-    function handleCreateOfferError(event) {
-      console.log("createOffer() error: ", event);
-    }
-
-    function doCall() {
-      console.log("Sending offer to peer");
-      pc.createOffer([sdpConstraints])
-        .then((offer) => setLocalAndSendMessage(offer))
-        .catch(handleCreateOfferError);
-    }
-
-    function maybeStart() {
-      console.log(
-        ">>>>>>> maybeStart() ",
-        isStarted,
-        localStream,
-        isChannelReady
-      );
-      if (!isStarted && typeof localStream !== "undefined" && isChannelReady) {
-        console.log(">>>>>> creating peer connection");
-        createPeerConnection();
-        pc.addStream(localStream);
-        isStarted = true;
-        console.log("isInitiator", isInitiator);
-        if (isInitiator) {
-          doCall();
-        }
-      }
-    }
-
-    function onCreateSessionDescriptionError(error) {
-      trace(`Failed to create session description: ${error.toString()}`);
-    }
-
-    function doAnswer() {
-      console.log("Sending answer to peer.");
-      pc.createAnswer()
-        .then((answer) => setLocalAndSendMessage(answer))
-        .catch(onCreateSessionDescriptionError);
-    }
-
     const initializeWebsocketConnection = ({ name, room }) => {
       socket = io({ query: `name=${name}` });
 
       socket.emit(EVENTS.CREATE_OR_JOIN, room);
       console.log("Attempted to create or  join room", room);
 
-      socket.on(EVENTS.CREATED, (roomObject) => {
+      socket.on(EVENTS.CREATED, (roomObject, user) => {
         console.log(`Created room ${roomObject}`);
+        myInfo.value = user;
         isJoinedRoom.value = true;
         isLoading.value = false;
-        isInitiator = true;
       });
 
       socket.on(EVENTS.FULL, (roomObject) => {
         console.log(`Room ${roomObject} is full`);
+        isLoading.value = false;
+        isRoomFull.value = true;
       });
 
       socket.on(EVENTS.JOIN, (roomObject) => {
         console.log(`Another peer made a request to join room ${roomObject}`);
         console.log(`This peer is the initiator of room ${roomObject}!`);
-        isChannelReady = true;
       });
 
-      socket.on(EVENTS.JOINED, (roomObject) => {
+      socket.on(EVENTS.JOINED, (roomObject, user) => {
         console.log(`joined: ${roomObject}`);
-        isChannelReady = true;
+        myInfo.value = user;
         isJoinedRoom.value = true;
         isLoading.value = false;
       });
@@ -273,16 +249,11 @@ Vue.createApp({
       });
 
       socket.on(EVENTS.ALL_USERS_IN_ROOM, (allUsers) => {
-        console.log("allUsers: ", allUsers);
         connectedUsers.value = allUsers;
       });
 
       socket.on(EVENTS.USER_JOINED, (user) => {
         console.log("user: ", user);
-        // sendMessage("got user media");
-        // if (isInitiator) {
-        //   maybeStart();
-        // }
       });
 
       socket.on(EVENTS.USER_LEFT, (user) => {
@@ -292,24 +263,29 @@ Vue.createApp({
       // This client receives a message
       socket.on(EVENTS.MESSAGE, (message) => {
         console.log("Client received message:", message);
-        if (message === "got user media") {
-          maybeStart();
-        } else if (message.type === "offer") {
-          if (!isInitiator && !isStarted) {
-            maybeStart();
-          }
-          pc.setRemoteDescription(new RTCSessionDescription(message));
-          doAnswer();
-        } else if (message.type === "answer" && isStarted) {
-          pc.setRemoteDescription(new RTCSessionDescription(message));
-        } else if (message.type === "candidate" && isStarted) {
+        if (message.type === MESSAGE_TYPE.CANDIDATE) {
           const candidate = new RTCIceCandidate({
             sdpMLineIndex: message.label,
             candidate: message.candidate,
           });
-          pc.addIceCandidate(candidate);
-        } else if (message === "bye" && isStarted) {
-          handleRemoteHangup();
+          if (pc) pc.addIceCandidate(candidate);
+        } else if (message.type === MESSAGE_TYPE.ANSWER_USER) {
+          if (message.receiver.id === myInfo.value.id) {
+            pc.setRemoteDescription(new RTCSessionDescription(message.sdpData));
+            callConnected.value = true;
+            isCalling.value = false;
+          }
+        } else if (message.type === MESSAGE_TYPE.DECLINE_CALL) {
+          console.log(message);
+        } else if (message.type === MESSAGE_TYPE.CALL_USER) {
+          // you got an incoming call if you are the receiver
+          if (message.receiver.id === myInfo.value.id) {
+            isIncomingCall.value = true;
+            incomingCallInfo.value = message.caller;
+            callData = message;
+          }
+        } else if (message.type === MESSAGE_TYPE.HAND_UP) {
+          console.log(message);
         }
       });
     };
@@ -317,40 +293,96 @@ Vue.createApp({
     const joinRoom = () => {
       isLoading.value = true;
       initializeWebsocketConnection(formData);
-
-      // turn on your camera
-      // getMediaPermission();
     };
 
-    function onLocalStream(stream) {
-      localStream = stream;
-      localVideo.value.srcObject = stream;
-    }
-
-    const getMediaPermission = () => {
-      navigator.mediaDevices
-        .getUserMedia(constraints)
-        .then(onLocalStream)
-        .catch((e) => {
-          alert(`getUserMedia() error: ${e.name}`);
-        });
-    };
+    const getMediaPermission = () =>
+      new Promise((resolve, reject) => {
+        navigator.mediaDevices
+          .getUserMedia(constraints)
+          .then((stream) => {
+            resolve(stream);
+          })
+          .catch((err) => {
+            reject(err);
+          });
+      });
 
     const sendMessage = (message) => {
       console.log("Client sending message: ", message);
       socket.emit(EVENTS.MESSAGE, message);
     };
 
+    const toggleCamera = () => {};
+    const toggleMicrophone = () => {};
+
+    const placeCall = async (receiverInfo) => {
+      try {
+        const stream = await getMediaPermission();
+        localVideo.value.srcObject = stream;
+        createPeerConnection();
+        pc.addStream(stream);
+        const offer = await pc.createOffer([sdpConstraints]);
+        pc.setLocalDescription(offer);
+        sendMessage({
+          type: MESSAGE_TYPE.CALL_USER,
+          caller: myInfo.value,
+          receiver: receiverInfo,
+          sdpData: offer,
+        });
+        isCalling.value = true;
+        callingNotification.value = `Waiting for ${receiverInfo.name} to answer`;
+      } catch (error) {
+        console.log(error);
+      }
+    };
+
+    const answerCall = async () => {
+      try {
+        const stream = await getMediaPermission();
+        localVideo.value.srcObject = stream;
+        if (!pc) createPeerConnection();
+        pc.addStream(stream);
+        pc.setRemoteDescription(new RTCSessionDescription(callData.sdpData));
+        const answer = await pc.createAnswer();
+        pc.setLocalDescription(answer);
+        sendMessage({
+          type: MESSAGE_TYPE.ANSWER_USER,
+          receiver: callData.caller,
+          sdpData: answer,
+        });
+        callConnected.value = true;
+      } catch (error) {
+        console.log(error);
+      }
+    };
+    const declineCall = () => {};
+
+    const hangUp = () => {};
+
     return {
       joinRoom,
       formData,
       buddyLink,
       isLoading,
+      isRoomFull,
       localVideo,
       isEmptyRoom,
       remoteVideo,
       isJoinedRoom,
       connectedUsers,
+      toggleCamera,
+      toggleMicrophone,
+      isIncomingCall,
+      incomingCallInfo,
+      placeCall,
+      answerCall,
+      declineCall,
+      hangUp,
+      isCalling,
+      callingNotification,
+      localMedia,
+      remoteMedia,
+      callConnected,
     };
   },
 }).mount("#app");
