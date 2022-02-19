@@ -99,14 +99,14 @@ const socketSignalingServer = (
         socket.emit(EVENTS.JOINED, room, { name: socket.user, id: socket.id });
         roomsData[room].push({ name: socket.user, id: socket.id });
 
-        socket.broadcast.emit(
-          EVENTS.USER_JOINED,
-          JSON.stringify({ id: socket.id, name: socket.user })
-        );
+        socket.broadcast.emit(EVENTS.USER_JOINED, {
+          id: socket.id,
+          name: socket.user,
+        });
 
         // Broadcast room-specific info to all users in the room
         io.to(room).emit(EVENTS.ALL_USERS_IN_ROOM, roomsData[room]);
-        io.sockets.in(room).emit(EVENTS.READY);
+        // io.sockets.in(room).emit(EVENTS.READY);
       } else {
         // max two clients
         socket.emit(EVENTS.FULL, room);
@@ -114,6 +114,10 @@ const socketSignalingServer = (
 
       socket.on(EVENTS.DISCONNECT, () => {
         log(`Client ID ${socket.id} disconnected.`);
+        // when a user is disconnected, find them and delete from the roomData
+        roomsData[room] = roomsData[room].filter(
+          (userInfo) => userInfo.id !== socket.id
+        );
       });
     });
   });
