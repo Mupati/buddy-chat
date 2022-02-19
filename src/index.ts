@@ -1,47 +1,47 @@
-import { series } from "async";
-import { Server, ServerOptions } from "socket.io";
-import express from "express";
-import debug from "debug";
-import { yellow, red, cyan } from "colors";
-import fs from "fs";
-import http from "http";
-import https from "https";
-import url from "url";
-import expressServer from "./config.json";
+import { series } from 'async';
+import { Server, ServerOptions } from 'socket.io';
+import express from 'express';
+import debug from 'debug';
+import { yellow, red, cyan } from 'colors';
+import fs from 'fs';
+import http from 'http';
+import https from 'https';
+import url from 'url';
+import expressServer from './config.json';
 
 const app = express();
-app.use(express.static("./web_client_demo"));
+app.use(express.static('./web_client_demo'));
 
 // Debugging
 const d = {
-  debug: debug("debug"),
-  err: debug("error"),
-  warn: debug("warn"),
-  timer: debug("timer"),
-  info: debug("info"),
+  debug: debug('debug'),
+  err: debug('error'),
+  warn: debug('warn'),
+  timer: debug('timer'),
+  info: debug('info'),
 };
 
 // events
 const EVENTS = {
-  CONNECTION: "connection",
-  MESSAGE: "message",
-  CREATE_OR_JOIN: "create_or_join",
-  CREATED: "created",
-  JOIN: "join",
-  JOINED: "joined",
-  READY: "ready",
-  FULL: "full",
-  DISCONNECT: "disconnect",
-  LOG: "log",
-  USER_JOINED: "user_joined",
-  USER_LEFT: "user_left",
-  ALL_USERS_IN_ROOM: "all_users_in_room",
+  CONNECTION: 'connection',
+  MESSAGE: 'message',
+  CREATE_OR_JOIN: 'create_or_join',
+  CREATED: 'created',
+  JOIN: 'join',
+  JOINED: 'joined',
+  READY: 'ready',
+  FULL: 'full',
+  DISCONNECT: 'disconnect',
+  LOG: 'log',
+  USER_JOINED: 'user_joined',
+  USER_LEFT: 'user_left',
+  ALL_USERS_IN_ROOM: 'all_users_in_room',
 };
 
 const roomsData = {};
 
 const getConnectedUserInfo = (socket, next) => {
-  const query = url.parse(socket.request.url, true).query;
+  const { query } = url.parse(socket.request.url, true);
   socket.user = query.name;
   d.info(query);
   next();
@@ -53,7 +53,7 @@ const socketSignalingServer = (
     | Partial<ServerOptions>
     | http.Server
     | https.Server
-    | undefined
+    | undefined,
 ) => {
   const io = new Server(httpServerParams);
   io.use(getConnectedUserInfo);
@@ -61,14 +61,14 @@ const socketSignalingServer = (
   io.on(EVENTS.CONNECTION, (socket) => {
     // convenience function to log server messages on the client
     const log = (...args: string[]) => {
-      const array = ["Message from server:"];
+      const array = ['Message from server:'];
       array.push(...args);
       socket.emit(EVENTS.LOG, array);
       d.info(array);
     };
 
     socket.on(EVENTS.MESSAGE, (message: string) => {
-      log("Client said: ", message);
+      log('Client said: ', message);
       // To support multiple rooms in app, would be room-only (not broadcast)
       socket.broadcast.emit(EVENTS.MESSAGE, message);
     });
@@ -116,7 +116,7 @@ const socketSignalingServer = (
         log(`Client ID ${socket.id} disconnected.`);
         // when a user is disconnected, find them and delete from the roomData
         roomsData[room] = roomsData[room].filter(
-          (userInfo) => userInfo.id !== socket.id
+          (userInfo) => userInfo.id !== socket.id,
         );
 
         // send updated list of available users.
@@ -130,71 +130,71 @@ series(
   [
     // 1. HTTP
     (callback) => {
-      console.log(yellow("[1. HTTP]"));
+      console.log(yellow('[1. HTTP]'));
       if (expressServer.ws.http_port) {
         const httpServer = http.createServer(app);
         socketSignalingServer(httpServer);
-        httpServer.on("error", (err: { code: string }) => {
-          d.err("HTTP error:", err);
-          if (err.code === "EADDRINUSE") {
+        httpServer.on('error', (err: { code: string }) => {
+          d.err('HTTP error:', err);
+          if (err.code === 'EADDRINUSE') {
             console.log(
               yellow(
-                `Port ${expressServer.ws.http_port} for HTTP backend already in use`
-              )
+                `Port ${expressServer.ws.http_port} for HTTP backend already in use`,
+              ),
             );
             callback();
           }
         });
         httpServer.listen(expressServer.ws.http_port, () => {
           d.info(
-            `HTTP backend listening on *:${expressServer.ws.http_port} (HTTP)`
+            `HTTP backend listening on *:${expressServer.ws.http_port} (HTTP)`,
           );
-          callback(null, "HTTP backend OK");
+          callback(null, 'HTTP backend OK');
         });
       } else {
-        callback(null, "No HTTP server backend");
+        callback(null, 'No HTTP server backend');
       }
     },
     // 2. HTTPS
     (callback) => {
-      console.log(yellow("[2. HTTPS]"));
+      console.log(yellow('[2. HTTPS]'));
       if (expressServer.ws.https_port) {
         const options = {
-          key: fs.readFileSync(expressServer.ws.key, "utf8"),
-          cert: fs.readFileSync(expressServer.ws.cert, "utf8"),
+          key: fs.readFileSync(expressServer.ws.key, 'utf8'),
+          cert: fs.readFileSync(expressServer.ws.cert, 'utf8'),
         };
         const httpsServer = https.createServer(options, app);
         socketSignalingServer(httpsServer);
-        httpsServer.on("error", (err: { code: string }) => {
-          d.err("HTTPS backend error:", err);
-          if (err.code === "EADDRINUSE") {
+        httpsServer.on('error', (err: { code: string }) => {
+          d.err('HTTPS backend error:', err);
+          if (err.code === 'EADDRINUSE') {
             console.log(
               yellow(
-                `Port ${expressServer.ws.https_port} for HTTPS backend already in use`
-              )
+                `Port ${expressServer.ws.https_port} for HTTPS backend already in use`,
+              ),
             );
             callback();
           }
         });
         httpsServer.listen(expressServer.ws.https_port, () => {
           d.info(
-            `HTTPS backend listening on *:${expressServer.ws.https_port} (HTTPS)`
+            `HTTPS backend listening on *:${expressServer.ws.https_port} (HTTPS)`,
           );
-          callback(null, "HTTPS backend OK");
+          callback(null, 'HTTPS backend OK');
         });
       } else {
-        callback(null, "No HTTPS users backend");
+        callback(null, 'No HTTPS users backend');
       }
     },
   ],
   (err, results) => {
     if (err) {
-      console.log(red("The WebRTC signaling server failed to start"));
+      console.log(red('The WebRTC signaling server failed to start'));
       process.exit(1);
     } else {
       // We're up and running
-      console.log(cyan("Server started!"));
+      console.log(cyan('Server started!'));
       console.log(results);
     }
-  }
+  },
 );

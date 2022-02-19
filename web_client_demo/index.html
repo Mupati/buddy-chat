@@ -93,6 +93,8 @@
             </p>
           </form>
         </div>
+
+        <!-- Empty room notification -->
         <div class="my-5 mx-auto">
           <p v-if="isEmptyRoom">
             Hello! {{formData.name}} you are the only person here.<br />
@@ -111,6 +113,77 @@
             </template>
           </div>
         </div>
+        <!-- End of Empty room notification -->
+
+        <!-- Media Device Selection -->
+        <div
+          class="my-5 flex justify-between flex-wrap"
+          v-if="mediaDeviceState?.devices && (isCalling || callConnected)"
+        >
+          <h2 class="w-full font-bold text-lg mb-3">Device Selection</h2>
+          <div
+            class="relative block w-full text-left mb-2"
+            v-for="(deviceProps, deviceName) in mediaDevices"
+            :key="deviceName"
+          >
+            <div class="block">
+              {{deviceName}}
+              <button
+                type="button"
+                class="inline-flex justify-center w-full rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-100 focus:ring-indigo-500"
+                :id="`${deviceName}-button`"
+                aria-expanded="true"
+                aria-haspopup="true"
+                @click="chooseMediaSource(deviceName)"
+                :disabled="deviceName === 'Speakers' && disableSpeakerSelect"
+              >
+                {{deviceSelection[deviceName]['choice'] ||
+                deviceProps[0]?.['label']}}
+                <svg
+                  class="-mr-1 ml-2 h-5 w-5"
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                  aria-hidden="true"
+                >
+                  <path
+                    fill-rule="evenodd"
+                    d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                    clip-rule="evenodd"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            <div
+              class="origin-top-right absolute right-0 mt-2 w-full z-10 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 divide-y divide-gray-100 focus:outline-none"
+              role="menu"
+              aria-orientation="vertical"
+              aria-labelledby="menu-button"
+              tabindex="-1"
+              v-show="deviceSelection[deviceName].active"
+            >
+              <div
+                class="py-1"
+                role="none"
+                v-for="(prop, index) in deviceProps"
+                :key="prop.deviceId"
+              >
+                <a
+                  href="#"
+                  class="text-gray-700 block pl-2 py-1 text-sm"
+                  role="menuitem"
+                  tabindex="-1"
+                  :id="`${deviceName}-${index}`"
+                  @click="chooseMediaSource(deviceName, prop)"
+                  >{{prop.label}}</a
+                >
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Media Device Selection -->
+
         <div class="my-5" v-if="isIncomingCall && !callConnected">
           <p class="mb-3">Incoming Call from {{ incomingCallInfo.name}}</p>
           <button

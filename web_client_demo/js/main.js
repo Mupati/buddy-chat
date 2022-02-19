@@ -1,3 +1,7 @@
+/* eslint-disable block-scoped-var */
+/* eslint-disable no-plusplus */
+/* eslint-disable no-var */
+/* eslint-disable no-undef */
 // events
 const EVENTS = {
   CONNECTION: "connection",
@@ -19,6 +23,20 @@ const MESSAGE_TYPE = {
   ANSWER_USER: "answer_user",
   DECLINE_CALL: "decline_call",
   HANG_UP: "hang_up",
+  // ANSWER: "answer",
+  // OFFER: "offer",
+};
+
+const MEDIA_DEVICE_KIND = {
+  AUDIO_INPUT: "audioinput",
+  AUDIO_OUTPUT: "audiooutput",
+  VIDEO_INPUT: "videoinput",
+};
+
+const DEVICE_NAME = {
+  MICROPHONE: "Microphone",
+  SPEAKERS: "Speakers",
+  CAMERA: "Camera",
 };
 
 Vue.createApp({
@@ -33,15 +51,47 @@ Vue.createApp({
     const callConnected = Vue.ref(false);
     const localVideoRef = Vue.ref(null);
     const remoteVideoRef = Vue.ref(null);
+
+    const mediaDeviceState = Vue.ref(null);
     const localMedia = Vue.reactive({
       isMutedMic: false,
     });
-
     const myInfo = Vue.ref(null);
     const connectedUsers = Vue.ref([]);
     const formData = Vue.reactive({
       name: "",
       room: "",
+    });
+
+    const mediaDevices = Vue.computed(() => {
+      const groupedDevices = {
+        [DEVICE_NAME.MICROPHONE]: [],
+        [DEVICE_NAME.SPEAKERS]: [],
+        [DEVICE_NAME.CAMERA]: [],
+      };
+      mediaDeviceState.value?.devices.forEach((device) => {
+        if (device.kind === MEDIA_DEVICE_KIND.AUDIO_INPUT) {
+          groupedDevices[DEVICE_NAME.MICROPHONE].push(device);
+        } else if (device.kind === MEDIA_DEVICE_KIND.AUDIO_OUTPUT) {
+          groupedDevices[DEVICE_NAME.SPEAKERS].push(device);
+        } else if (device.kind === MEDIA_DEVICE_KIND.VIDEO_INPUT) {
+          groupedDevices[DEVICE_NAME.CAMERA].push(device);
+        }
+      });
+      return groupedDevices;
+    });
+
+    const mediaSource = Vue.reactive({
+      [DEVICE_NAME.MICROPHONE]:
+        mediaDevices[MEDIA_DEVICE_KIND.AUDIO_INPUT]?.[0].deviceId,
+      [DEVICE_NAME.CAMERA]:
+        mediaDevices[MEDIA_DEVICE_KIND.VIDEO_INPUT]?.[0].deviceId,
+    });
+
+    const deviceSelection = Vue.reactive({
+      [DEVICE_NAME.MICROPHONE]: { active: false, choice: null },
+      [DEVICE_NAME.SPEAKERS]: { active: false, choice: null },
+      [DEVICE_NAME.CAMERA]: { active: false, choice: null },
     });
 
     const isEmptyRoom = Vue.computed(
@@ -52,17 +102,17 @@ Vue.createApp({
       () => `${window.location.origin}/?room=${formData.room}`
     );
 
-    Vue.onMounted(() => {
-      const params = new URL(document.location).searchParams;
-      const room = params.get("room");
-      if (room) {
-        formData.room = room;
-      }
-    });
-
     const constraints = {
-      audio: true,
-      video: true,
+      audio: {
+        deviceId: mediaSource[DEVICE_NAME.MICROPHONE]
+          ? { exact: mediaSource[DEVICE_NAME.MICROPHONE] }
+          : undefined,
+      },
+      video: {
+        deviceId: mediaSource[DEVICE_NAME.CAMERA]
+          ? { exact: mediaSource[DEVICE_NAME.CAMERA] }
+          : undefined,
+      },
     };
 
     const pcConfig = {
@@ -84,6 +134,7 @@ Vue.createApp({
 
     let socket;
     let remoteStream;
+    let localStream;
     let pc;
     let callData;
 
@@ -92,6 +143,7 @@ Vue.createApp({
       let sdpLines = sdp.split("\r\n");
       let mLineIndex;
       // Search for m line.
+      // eslint-disable-next-line vars-on-top
       for (var i = 0; i < sdpLines.length; i++) {
         if (sdpLines[i].search("m=audio") !== -1) {
           mLineIndex = i;
@@ -105,6 +157,7 @@ Vue.createApp({
       // If Opus is available, set it as the default in m line.
       for (i = 0; i < sdpLines.length; i++) {
         if (sdpLines[i].search("opus/48000") !== -1) {
+          // eslint-disable-next-line no-use-before-define
           const opusPayload = extractSdp(sdpLines[i], /:(\d+) opus\/48000/i);
           if (opusPayload) {
             sdpLines[mLineIndex] = setDefaultCodec(
@@ -166,6 +219,11 @@ Vue.createApp({
       return sdpLines;
     }
 
+    const sendMessage = (message) => {
+      console.log("Client sending message: ", message);
+      socket.emit(EVENTS.MESSAGE, message);
+    };
+
     function handleRemoteStreamAdded(event) {
       console.log("Remote stream added.");
       remoteStream = event.stream;
@@ -190,12 +248,43 @@ Vue.createApp({
       }
     }
 
+    const handleNegotiation = async (event) => {
+      console.log("negotiation event: ", event);
+
+      // try {
+      //   const offer = await pc.createOffer([sdpConstraints]);
+      //   // Set Opus as the preferred codec in SDP if Opus is present.
+      //   offer.sdp = preferOpus(offer.sdp);
+      //   pc.setLocalDescription(offer);
+      //   sendMessage(offer);
+      // } catch (error) {
+      //   console.log(error);
+      // }
+    };
+
+    // const sendSdpAnswer = async () => {
+    //   const answer = await pc.createAnswer();
+    //   // Set Opus as the preferred codec in SDP if Opus is present.
+    //   answer.sdp = preferOpus(answer.sdp);
+    //   pc.setLocalDescription(answer);
+    //   sendMessage(answer);
+    // };
+
+    function handleConnectionStateChange(event) {
+      console.log("handleConnectionStateChange event: ", event);
+    }
+
     function createPeerConnection() {
       try {
         pc = new RTCPeerConnection(pcConfig);
         pc.onicecandidate = handleIceCandidate;
         pc.onaddstream = handleRemoteStreamAdded;
+        pc.ontrack = ({ streams: [stream] }) => {
+          remoteVideoRef.value.srcObject = stream;
+        };
         pc.onremovestream = handleRemoteStreamRemoved;
+        pc.onnegotiationneeded = handleNegotiation;
+        pc.onconnectionstatechange = handleConnectionStateChange;
         console.log("Created RTCPeerConnnection");
       } catch (e) {
         console.log(`Failed to create PeerConnection, exception: ${e.message}`);
@@ -252,13 +341,23 @@ Vue.createApp({
       // This client receives a message
       socket.on(EVENTS.MESSAGE, (message) => {
         console.log("Client received message:", message);
+
         if (message.type === MESSAGE_TYPE.CANDIDATE) {
           const candidate = new RTCIceCandidate({
             sdpMLineIndex: message.label,
             candidate: message.candidate,
           });
           if (pc) pc.addIceCandidate(candidate);
-        } else if (message.type === MESSAGE_TYPE.ANSWER_USER) {
+        }
+        // else if (message.type === MESSAGE_TYPE.OFFER) {
+        //   console.log("sdp offer: ", message);
+        //   pc.setRemoteDescription(new RTCSessionDescription(message));
+        //   sendSdpAnswer();
+        // } else if (message.type === MESSAGE_TYPE.ANSWER) {
+        //   console.log("sdp answer: ", message);
+        //   pc.setRemoteDescription(new RTCSessionDescription(message));
+        // }
+        else if (message.type === MESSAGE_TYPE.ANSWER_USER) {
           if (message.receiver.id === myInfo.value.id) {
             pc.setRemoteDescription(new RTCSessionDescription(message.sdpData));
             callConnected.value = true;
@@ -290,6 +389,40 @@ Vue.createApp({
       initializeWebsocketConnection(formData);
     };
 
+    const getState = async () => {
+      const { browserDetails } = adapter;
+      let hasCameraPermission;
+      let hasMicrophonePermission;
+
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const hasCamera = !!devices.find((d) => d.kind === "videoinput");
+      const hasMicrophone = !!devices.find((d) => d.kind === "audioinput");
+      if (browserDetails.browser === "chrome" && browserDetails.version >= 86) {
+        // Maybe only do this from Chrome 86 onward.
+        hasCameraPermission =
+          (await navigator.permissions.query({ name: "camera" })).state ===
+          "granted";
+        hasMicrophonePermission =
+          (await navigator.permissions.query({ name: "microphone" })).state ===
+          "granted";
+      } else {
+        hasCameraPermission = !!devices.find(
+          (d) => d.kind === "videoinput" && d.label !== ""
+        );
+        hasMicrophonePermission = !!devices.find(
+          (d) => d.kind === "audioinput" && d.label !== ""
+        );
+      }
+
+      return {
+        devices,
+        hasCamera,
+        hasCameraPermission,
+        hasMicrophone,
+        hasMicrophonePermission,
+      };
+    };
+
     const getMediaPermission = () =>
       new Promise((resolve, reject) => {
         navigator.mediaDevices
@@ -302,9 +435,15 @@ Vue.createApp({
           });
       });
 
-    const sendMessage = (message) => {
-      console.log("Client sending message: ", message);
-      socket.emit(EVENTS.MESSAGE, message);
+    const getLocalMediaStream = async () => {
+      try {
+        const stream = await getMediaPermission();
+        localVideoRef.value.srcObject = stream;
+        localStream = stream;
+        mediaDeviceState.value = await getState();
+      } catch (error) {
+        console.log(error);
+      }
     };
 
     const toggleMicrophone = () => {
@@ -319,10 +458,12 @@ Vue.createApp({
 
     const placeCall = async (receiverInfo) => {
       try {
-        const stream = await getMediaPermission();
-        localVideoRef.value.srcObject = stream;
+        await getLocalMediaStream();
         createPeerConnection();
-        pc.addStream(stream);
+        // pc.addStream(localStream);
+        localStream
+          .getTracks()
+          .forEach((track) => pc.addTrack(track, localStream));
         const offer = await pc.createOffer([sdpConstraints]);
         // Set Opus as the preferred codec in SDP if Opus is present.
         offer.sdp = preferOpus(offer.sdp);
@@ -342,10 +483,12 @@ Vue.createApp({
 
     const answerCall = async () => {
       try {
-        const stream = await getMediaPermission();
-        localVideoRef.value.srcObject = stream;
-        if (!pc) createPeerConnection();
-        pc.addStream(stream);
+        await getLocalMediaStream();
+        createPeerConnection();
+        // pc.addStream(localStream);
+        localStream
+          .getTracks()
+          .forEach((track) => pc.addTrack(track, localStream));
         pc.setRemoteDescription(new RTCSessionDescription(callData.sdpData));
         const answer = await pc.createAnswer();
         // Set Opus as the preferred codec in SDP if Opus is present.
@@ -397,6 +540,64 @@ Vue.createApp({
       hangUp();
     };
 
+    // Change Camera and Microphone source
+    const changeMicCamSource = async () => {
+      console.log("changingMicCamSource");
+      if (localVideoRef.value) stopVideoStream(localVideoRef.value);
+      await getLocalMediaStream();
+    };
+
+    const changeAudioOutput = (element, sinkId) => {
+      // Attach audio output device to video element using device/sink ID.
+      if (typeof element.sinkId !== "undefined") {
+        element
+          .setSinkId(sinkId)
+          .then(() => {
+            console.log(`Success, audio output device attached: ${sinkId}`);
+          })
+          .catch((error) => {
+            let errorMessage = error;
+            if (error.name === "SecurityError") {
+              errorMessage = `You need to use HTTPS for selecting audio output device: ${error}`;
+            }
+            console.error(errorMessage);
+            // Jump back to first output device in the list as it's the default.
+            deviceSelection[DEVICE_NAME.SPEAKERS].choice =
+              mediaDevices[DEVICE_NAME.SPEAKERS][0].label;
+          });
+      } else {
+        console.warn("Browser does not support output device selection.");
+      }
+    };
+
+    const chooseMediaSource = async (deviceName, device = null) => {
+      if (device && deviceSelection[deviceName].choice !== device.label) {
+        deviceSelection[deviceName].choice = device.label;
+        if (deviceName === DEVICE_NAME.SPEAKERS) {
+          changeAudioOutput(localVideoRef.value, device.deviceId);
+        } else if (mediaSource?.[deviceName] !== device.deviceId) {
+          mediaSource[deviceName] = device.deviceId;
+          console.log(
+            "after the update: mediaSource[deviceName]: ",
+            mediaSource[deviceName]
+          );
+          await changeMicCamSource();
+        }
+      }
+      deviceSelection[deviceName].active = !deviceSelection[deviceName].active;
+    };
+
+    Vue.onMounted(async () => {
+      const params = new URL(document.location).searchParams;
+      const room = params.get("room");
+      if (room) {
+        formData.room = room;
+      }
+    });
+
+    const disableSpeakerSelect = !("sinkId" in HTMLMediaElement.prototype);
+    window.onbeforeunload = hangUp;
+
     return {
       hangUp,
       joinRoom,
@@ -419,6 +620,11 @@ Vue.createApp({
       incomingCallInfo,
       callConnected,
       callingNotification,
+      mediaDevices,
+      chooseMediaSource,
+      deviceSelection,
+      disableSpeakerSelect,
+      mediaDeviceState,
     };
   },
 }).mount("#app");
