@@ -123,7 +123,7 @@ Vue.createApp({
           urls: "stun:stun.l.google.com:19302",
         },
         {
-          urls: "turn:54.160.108.83:3478?transport=udp",
+          urls: "turn:167.99.220.186:3478?transport=udp",
           username: "mupati",
           credential: "mupati101",
         },
