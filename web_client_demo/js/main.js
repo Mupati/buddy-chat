@@ -455,7 +455,7 @@ Vue.createApp({
         // pan.connect(dest);
         // pan.pan.value = -1;
         // localAudioRef.value.srcObject = dest.stream;
-        // const stream = await getMediaPermission();
+        const stream = await getMediaPermission();
         // localAudioContext.resume();
         // const source = localAudioContext.createMediaStreamSource(stream);
         // source.connect(pan);
