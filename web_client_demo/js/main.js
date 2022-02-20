@@ -228,15 +228,15 @@ Vue.createApp({
 
     function handleRemoteStreamAdded(event) {
       console.log("Remote stream added.");
-      const remoteAudioContext = new AudioContext();
-      const pan = remoteAudioContext.createStereoPanner();
-      const dest = remoteAudioContext.createMediaStreamDestination();
-      pan.connect(dest);
-      pan.pan.value = 1;
-      remoteAudioRef.value.srcObject = dest.stream;
-      remoteAudioContext.resume();
-      const source = remoteAudioContext.createMediaStreamSource(event.stream);
-      source.connect(pan);
+      // const remoteAudioContext = new AudioContext();
+      // const pan = remoteAudioContext.createStereoPanner();
+      // const dest = remoteAudioContext.createMediaStreamDestination();
+      // pan.connect(dest);
+      // pan.pan.value = 1;
+      // remoteAudioRef.value.srcObject = dest.stream;
+      // remoteAudioContext.resume();
+      // const source = remoteAudioContext.createMediaStreamSource(event.stream);
+      // source.connect(pan);
 
       remoteStream = event.stream;
       remoteVideoRef.value.srcObject = remoteStream;
@@ -449,16 +449,16 @@ Vue.createApp({
 
     const getLocalMediaStream = async () => {
       try {
-        const localAudioContext = new AudioContext();
-        const pan = localAudioContext.createStereoPanner();
-        const dest = localAudioContext.createMediaStreamDestination();
-        pan.connect(dest);
-        pan.pan.value = -1;
-        localAudioRef.value.srcObject = dest.stream;
-        const stream = await getMediaPermission();
-        localAudioContext.resume();
-        const source = localAudioContext.createMediaStreamSource(stream);
-        source.connect(pan);
+        // const localAudioContext = new AudioContext();
+        // const pan = localAudioContext.createStereoPanner();
+        // const dest = localAudioContext.createMediaStreamDestination();
+        // pan.connect(dest);
+        // pan.pan.value = -1;
+        // localAudioRef.value.srcObject = dest.stream;
+        // const stream = await getMediaPermission();
+        // localAudioContext.resume();
+        // const source = localAudioContext.createMediaStreamSource(stream);
+        // source.connect(pan);
 
         localStream = stream;
         localVideoRef.value.srcObject = stream;
