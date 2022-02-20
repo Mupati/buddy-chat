@@ -151,12 +151,15 @@ series(
             callback();
           }
         });
-        httpServer.listen(expressServer.ws.http_port, () => {
-          d.info(
-            `HTTP backend listening on *:${expressServer.ws.http_port} (HTTP)`
-          );
-          callback(null, "HTTP backend OK");
-        });
+        httpServer.listen(
+          process.env.PORT || expressServer.ws.http_port,
+          () => {
+            d.info(
+              `HTTP backend listening on *:${expressServer.ws.http_port} (HTTP)`
+            );
+            callback(null, "HTTP backend OK");
+          }
+        );
       } else {
         callback(null, "No HTTP server backend");
       }
@@ -182,12 +185,15 @@ series(
             callback();
           }
         });
-        httpsServer.listen(expressServer.ws.https_port, () => {
-          d.info(
-            `HTTPS backend listening on *:${expressServer.ws.https_port} (HTTPS)`
-          );
-          callback(null, "HTTPS backend OK");
-        });
+        httpsServer.listen(
+          process.env.PORT || expressServer.ws.https_port,
+          () => {
+            d.info(
+              `HTTPS backend listening on *:${expressServer.ws.https_port} (HTTPS)`
+            );
+            callback(null, "HTTPS backend OK");
+          }
+        );
       } else {
         callback(null, "No HTTPS users backend");
       }
