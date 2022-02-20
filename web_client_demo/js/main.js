@@ -226,7 +226,7 @@ Vue.createApp({
       socket.emit(EVENTS.MESSAGE, message);
     };
 
-    function handleRemoteStreamAdded(event) {
+    async function handleRemoteStreamAdded(event) {
       console.log("Remote stream added.");
       // const remoteAudioContext = new AudioContext();
       // const pan = remoteAudioContext.createStereoPanner();
@@ -238,8 +238,9 @@ Vue.createApp({
       // const source = remoteAudioContext.createMediaStreamSource(event.stream);
       // source.connect(pan);
 
-      remoteStream = event.stream;
-      remoteVideoRef.value.srcObject = remoteStream;
+      // remoteStream = event.stream;
+      remoteVideoRef.value.srcObject = event.stream;
+      await remoteVideoRef.value?.play();
     }
 
     function handleRemoteStreamRemoved(event) {
