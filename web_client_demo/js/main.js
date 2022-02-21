@@ -224,7 +224,7 @@ Vue.createApp({
       socket.emit(EVENTS.MESSAGE, message);
     };
 
-    function handleRemoteStreamAdded(event) {
+    async function handleRemoteStreamAdded(event) {
       console.log("Remote stream added.");
       const remoteAudioContext = new AudioContext();
       const pan = remoteAudioContext.createStereoPanner();
@@ -240,6 +240,7 @@ Vue.createApp({
       } catch (error) {
         remoteVideoRef.value.src = window.URL.createObjectURL(event.stream);
       }
+      await remoteVideoRef.value?.play();
     }
 
     function handleRemoteStreamRemoved(event) {
@@ -441,6 +442,7 @@ Vue.createApp({
         localStream = stream;
 
         mediaDeviceState.value = await getState();
+        await localVideoRef.value?.play();
 
         if (shouldReplaceTrack) {
           const videoTrack = stream.getVideoTracks()[0];
