@@ -1,4 +1,4 @@
-# native-webrtc-peer-to-peer
+# Buddy Chat
 A basic native WebRTC peer to peer Web App implementation
 
 It includes a web client and a signaling server for clients to connect and do signaling for WebRTC.
