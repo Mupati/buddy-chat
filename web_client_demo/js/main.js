@@ -135,7 +135,6 @@ Vue.createApp({
     };
 
     let socket;
-    let remoteStream;
     let localStream;
     let pc;
     let callData;
@@ -237,8 +236,6 @@ Vue.createApp({
       remoteAudioContext.resume();
       const source = remoteAudioContext.createMediaStreamSource(event.stream);
       source.connect(pan);
-
-      // remoteStream = event.stream;
       remoteVideoRef.value.srcObject = event.stream;
     }
 
@@ -260,27 +257,9 @@ Vue.createApp({
       }
     }
 
-    const handleNegotiation = async (event) => {
+    const handleNegotiation = (event) => {
       console.log("negotiation event: ", event);
-
-      // try {
-      //   const offer = await pc.createOffer([sdpConstraints]);
-      //   // Set Opus as the preferred codec in SDP if Opus is present.
-      //   offer.sdp = preferOpus(offer.sdp);
-      //   pc.setLocalDescription(offer);
-      //   sendMessage(offer);
-      // } catch (error) {
-      //   console.log(error);
-      // }
     };
-
-    // const sendSdpAnswer = async () => {
-    //   const answer = await pc.createAnswer();
-    //   // Set Opus as the preferred codec in SDP if Opus is present.
-    //   answer.sdp = preferOpus(answer.sdp);
-    //   pc.setLocalDescription(answer);
-    //   sendMessage(answer);
-    // };
 
     function handleConnectionStateChange(event) {
       console.log("handleConnectionStateChange event: ", event);
@@ -360,16 +339,7 @@ Vue.createApp({
             candidate: message.candidate,
           });
           if (pc) pc.addIceCandidate(candidate);
-        }
-        // else if (message.type === MESSAGE_TYPE.OFFER) {
-        //   console.log("sdp offer: ", message);
-        //   pc.setRemoteDescription(new RTCSessionDescription(message));
-        //   sendSdpAnswer();
-        // } else if (message.type === MESSAGE_TYPE.ANSWER) {
-        //   console.log("sdp answer: ", message);
-        //   pc.setRemoteDescription(new RTCSessionDescription(message));
-        // }
-        else if (message.type === MESSAGE_TYPE.ANSWER_USER) {
+        } else if (message.type === MESSAGE_TYPE.ANSWER_USER) {
           if (message.receiver.id === myInfo.value.id) {
             pc.setRemoteDescription(new RTCSessionDescription(message.sdpData));
             callConnected.value = true;
@@ -447,7 +417,7 @@ Vue.createApp({
           });
       });
 
-    const getLocalMediaStream = async () => {
+    const getLocalMediaStream = async (shouldReplaceTrack = false) => {
       try {
         const localAudioContext = new AudioContext();
         const pan = localAudioContext.createStereoPanner();
@@ -463,6 +433,15 @@ Vue.createApp({
         localStream = stream;
         localVideoRef.value.srcObject = stream;
         mediaDeviceState.value = await getState();
+
+        if (shouldReplaceTrack) {
+          const videoTrack = stream.getVideoTracks()[0];
+          const sender = pc
+            .getSenders()
+            .find((s) => s.track.kind === videoTrack.kind);
+          console.log("found sender:", sender);
+          sender.replaceTrack(videoTrack);
+        }
       } catch (error) {
         console.log(error);
       }
@@ -482,7 +461,6 @@ Vue.createApp({
       try {
         await getLocalMediaStream();
         createPeerConnection();
-        // pc.addStream(localStream);
         localStream
           .getTracks()
           .forEach((track) => pc.addTrack(track, localStream));
@@ -507,7 +485,6 @@ Vue.createApp({
       try {
         await getLocalMediaStream();
         createPeerConnection();
-        // pc.addStream(localStream);
         localStream
           .getTracks()
           .forEach((track) => pc.addTrack(track, localStream));
@@ -566,7 +543,7 @@ Vue.createApp({
     const changeMicCamSource = async () => {
       console.log("changingMicCamSource");
       if (localVideoRef.value) stopVideoStream(localVideoRef.value);
-      await getLocalMediaStream();
+      await getLocalMediaStream(true);
     };
 
     const changeAudioOutput = (element, sinkId) => {
@@ -599,10 +576,6 @@ Vue.createApp({
           changeAudioOutput(localVideoRef.value, device.deviceId);
         } else if (mediaSource?.[deviceName] !== device.deviceId) {
           mediaSource[deviceName] = device.deviceId;
-          console.log(
-            "after the update: mediaSource[deviceName]: ",
-            mediaSource[deviceName]
-          );
           await changeMicCamSource();
         }
       }
