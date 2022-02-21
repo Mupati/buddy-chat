@@ -111,6 +111,7 @@ Vue.createApp({
           : undefined,
       },
       video: {
+        facingMode: "user",
         deviceId: mediaSource[DEVICE_NAME.CAMERA]
           ? { exact: mediaSource[DEVICE_NAME.CAMERA] }
           : undefined,
@@ -123,7 +124,7 @@ Vue.createApp({
           urls: "stun:stun.l.google.com:19302",
         },
         {
-          urls: "turn:167.99.220.186:3478?transport=udp",
+          urls: "turn:167.99.220.186:3478?transport=udp", // error with turn server
           username: "mupati",
           credential: "mupati101",
         },
@@ -236,7 +237,11 @@ Vue.createApp({
       remoteAudioContext.resume();
       const source = remoteAudioContext.createMediaStreamSource(event.stream);
       source.connect(pan);
-      remoteVideoRef.value.srcObject = event.stream;
+      try {
+        remoteVideoRef.value.srcObject = event.stream;
+      } catch (error) {
+        remoteVideoRef.value.src = window.URL.createObjectURL(event.stream);
+      }
     }
 
     function handleRemoteStreamRemoved(event) {
@@ -430,8 +435,13 @@ Vue.createApp({
         const source = localAudioContext.createMediaStreamSource(stream);
         source.connect(pan);
 
+        try {
+          localVideoRef.value.srcObject = stream;
+        } catch (error) {
+          localVideoRef.value.src = window.URL.createObjectURL(stream);
+        }
         localStream = stream;
-        localVideoRef.value.srcObject = stream;
+
         mediaDeviceState.value = await getState();
 
         if (shouldReplaceTrack) {

@@ -205,9 +205,20 @@
         class="mt-5"
         v-show="isCalling || callConnected"
       >
-        <video ref="localVideoRef" id="local-video" autoplay muted></video>
+        <video
+          ref="localVideoRef"
+          id="local-video"
+          autoplay
+          muted
+          playsinline
+        ></video>
         <audio autoplay ref="localAudioRef"></audio>
-        <video ref="remoteVideoRef" id="remote-video" autoplay></video>
+        <video
+          ref="remoteVideoRef"
+          id="remote-video"
+          autoplay
+          playsinline
+        ></video>
         <audio autoplay ref="remoteAudioRef"></audio>
         <p v-if="isCalling" class="absolute top-10 left-10">
           {{callingNotification}}
