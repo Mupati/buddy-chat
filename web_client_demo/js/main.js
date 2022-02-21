@@ -550,7 +550,6 @@ Vue.createApp({
 
     // Change Camera and Microphone source
     const changeMicCamSource = async () => {
-      console.log("changingMicCamSource");
       if (localVideoRef.value) stopVideoStream(localVideoRef.value);
       await getLocalMediaStream(true);
     };
@@ -601,8 +600,6 @@ Vue.createApp({
 
     const disableSpeakerSelect = !("sinkId" in HTMLMediaElement.prototype);
     window.onbeforeunload = hangUp;
-
-    console.log(adapter);
 
     return {
       hangUp,
