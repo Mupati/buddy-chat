@@ -240,7 +240,6 @@ Vue.createApp({
       } catch (error) {
         remoteVideoRef.value.src = window.URL.createObjectURL(event.stream);
       }
-      await remoteVideoRef.value?.play();
     }
 
     function handleRemoteStreamRemoved(event) {
@@ -442,7 +441,6 @@ Vue.createApp({
         localStream = stream;
 
         mediaDeviceState.value = await getState();
-        await localVideoRef.value?.play();
 
         if (shouldReplaceTrack) {
           const videoTrack = stream.getVideoTracks()[0];
@@ -476,7 +474,7 @@ Vue.createApp({
           .forEach((track) => pc.addTrack(track, localStream));
         const offer = await pc.createOffer([sdpConstraints]);
         // Set Opus as the preferred codec in SDP if Opus is present.
-        offer.sdp = preferOpus(offer.sdp);
+        // offer.sdp = preferOpus(offer.sdp);
         pc.setLocalDescription(offer);
         sendMessage({
           type: MESSAGE_TYPE.CALL_USER,
@@ -501,7 +499,7 @@ Vue.createApp({
         pc.setRemoteDescription(new RTCSessionDescription(callData.sdpData));
         const answer = await pc.createAnswer();
         // Set Opus as the preferred codec in SDP if Opus is present.
-        answer.sdp = preferOpus(answer.sdp);
+        // answer.sdp = preferOpus(answer.sdp);
         pc.setLocalDescription(answer);
         sendMessage({
           type: MESSAGE_TYPE.ANSWER_USER,
