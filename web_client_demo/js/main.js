@@ -111,7 +111,6 @@ Vue.createApp({
           : undefined,
       },
       video: {
-        facingMode: "user",
         deviceId: mediaSource[DEVICE_NAME.CAMERA]
           ? { exact: mediaSource[DEVICE_NAME.CAMERA] }
           : undefined,
@@ -602,6 +601,8 @@ Vue.createApp({
 
     const disableSpeakerSelect = !("sinkId" in HTMLMediaElement.prototype);
     window.onbeforeunload = hangUp;
+
+    console.log(adapter);
 
     return {
       hangUp,
