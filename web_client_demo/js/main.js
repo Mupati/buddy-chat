@@ -116,19 +116,18 @@ Vue.createApp({
           : undefined,
       },
     };
-
     const pcConfig = {
       iceServers: [
+        { urls: "stun:stun.l.google.com:19302" },
+        { urls: "stun:global.stun.twilio.com:3478?transport=udp" },
         {
-          urls: "stun:stun.l.google.com:19302",
-        },
-        {
-          urls: "turn:167.99.220.186:3478?transport=udp", // error with turn server
+          urls: "turn:167.99.220.186:3478?transport=udp",
           username: "mupati",
           credential: "mupati101",
         },
       ],
     };
+
     const sdpConstraints = {
       offerToReceiveAudio: true,
       offerToReceiveVideo: true,
