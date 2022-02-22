@@ -473,7 +473,7 @@ Vue.createApp({
     const placeCall = async (receiverInfo) => {
       try {
         await getLocalMediaStream();
-        createPeerConnection();
+        // createPeerConnection();
         localStream
           .getTracks()
           .forEach((track) => pc.addTrack(track, localStream));
@@ -497,7 +497,7 @@ Vue.createApp({
     const answerCall = async () => {
       try {
         await getLocalMediaStream();
-        createPeerConnection();
+        // createPeerConnection();
         localStream
           .getTracks()
           .forEach((track) => pc.addTrack(track, localStream));
@@ -600,6 +600,7 @@ Vue.createApp({
       if (room) {
         formData.room = room;
       }
+      createPeerConnection();
     });
 
     const disableSpeakerSelect = !("sinkId" in HTMLMediaElement.prototype);
