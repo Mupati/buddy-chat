@@ -126,7 +126,7 @@ Vue.createApp({
           credential: "mupati101",
         },
         {
-          urls: "turn:167.99.220.186:3478?transport=tcp",
+          urls: "turn:167.99.220.186:5349?transport=tcp",
           username: "mupati",
           credential: "mupati101",
         },
@@ -473,7 +473,7 @@ Vue.createApp({
     const placeCall = async (receiverInfo) => {
       try {
         await getLocalMediaStream();
-        // createPeerConnection();
+        createPeerConnection();
         localStream
           .getTracks()
           .forEach((track) => pc.addTrack(track, localStream));
@@ -497,7 +497,7 @@ Vue.createApp({
     const answerCall = async () => {
       try {
         await getLocalMediaStream();
-        // createPeerConnection();
+        createPeerConnection();
         localStream
           .getTracks()
           .forEach((track) => pc.addTrack(track, localStream));
@@ -600,7 +600,6 @@ Vue.createApp({
       if (room) {
         formData.room = room;
       }
-      createPeerConnection();
     });
 
     const disableSpeakerSelect = !("sinkId" in HTMLMediaElement.prototype);
