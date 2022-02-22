@@ -125,6 +125,11 @@ Vue.createApp({
           username: "mupati",
           credential: "mupati101",
         },
+        {
+          urls: "turn:167.99.220.186:3478?transport=tcp",
+          username: "mupati",
+          credential: "mupati101",
+        },
       ],
     };
 
